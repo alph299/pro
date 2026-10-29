@@ -1,0 +1,81 @@
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT="${1:-kernel-dev}"
+
+mkdir -p "$PROJECT/.devcontainer"
+
+cat > "$PROJECT/Dockerfile" <<'EOF'
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV HOME=/root
+ENV USER=root
+ENV ARCH=x86_64
+
+RUN apt-get update && apt-get install -y \
+    build-essential bc bison flex \
+    libssl-dev libelf-dev libncurses-dev \
+    dwarves pahole cpio rsync kmod \
+    git curl wget vim nano less file tree \
+    python3 python3-pip python3-venv python3-dev \
+    perl tar xz-utils zstd lz4 gzip unzip zip \
+    patch diffutils pkg-config cmake ninja-build \
+    clang llvm lld \
+    gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+    gcc-riscv64-linux-gnu g++-riscv64-linux-gnu \
+    qemu-system-x86 qemu-system-arm qemu-system-misc \
+    ccache \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+CMD ["/bin/bash"]
+EOF
+
+cat > "$PROJECT/.devcontainer/devcontainer.json" <<'EOF'
+{
+    "name": "Linux Kernel Build Environment",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+    "remoteUser": "root",
+    "containerUser": "root",
+    "workspaceFolder": "/workspace",
+    "runArgs": [
+        "--cap-add=SYS_PTRACE",
+        "--security-opt=seccomp=unconfined"
+    ],
+    "hostRequirements": {
+        "cpus": 4,
+        "memory": "8gb"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "llvm-vs-code-extensions.vscode-clangd",
+                "ms-vscode.makefile-tools",
+                "eamodio.gitlens"
+            ]
+        }
+    }
+}
+EOF
+
+cat > "$PROJECT/.gitignore" <<'EOF'
+*.o
+*.ko
+*.mod
+*.mod.c
+*.cmd
+Module.symvers
+modules.order
+.config
+.cache/
+EOF
+
+echo "Kernel development environment created: $PROJECT"
+echo "Push this project to GitHub, then create a Codespace."
